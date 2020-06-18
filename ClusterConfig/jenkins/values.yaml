@@ -301,25 +301,18 @@ managedConfig:
 ## Configure Seed Jobs - https://github.com/odavid/my-bloody-jenkins#seed-jobs-section
   seed_jobs:
   #   # Each top level key is the seed job name
-    unit-test:
+    setup-pipelines:
       source:
         # git repo where of the seed job
         remote: git@github.com:Saar-m/netomedia.git
         credentialsId: gitsshkey
         branch: 'master'
       # Location of the pipeline script within the repository
-      pipeline: Pipelines/unit-test.groovy
+      pipeline: Pipelines/setupPipelines.groovy
       # always - will be executed everytime the config loader will run
       # firstTimeOnly - will be executed only if the job was not exist
       # never - don't execute the job, let the triggers do their job
-      executeWhen: never #firstTimeOnly always never
-    deploy:
-      source:
-        remote: git@github.com:Saar-m/netomedia.git
-        credentialsId: gitsshkey
-        branch: 'master'
-      pipeline: Pipelines/deploy.groovy
-      executeWhen: never
+      executeWhen: always #firstTimeOnly always never
     
 ## Configure Job DSL Scripts - https://github.com/odavid/my-bloody-jenkins#jobdsl-scripts-section
 # job_dsl_scripts:

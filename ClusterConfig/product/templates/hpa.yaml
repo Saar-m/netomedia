@@ -11,4 +11,4 @@ spec:
     name: {{ include "netomedia.fullname" . }}
   minReplicas: 2
   maxReplicas: 3
-  targetCPUUtilizationPercentage: 10
+  targetCPUUtilizationPercentage: 20
