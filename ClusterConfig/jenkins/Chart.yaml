@@ -1,0 +1,13 @@
+appVersion: v2.190.2-164
+description: |
+  A Helm chart for my-bloody-jenkins - a self configured jenkins docker image, based on Jenkins LTS. Inspired by https://github.com/kubernetes/charts/tree/master/stable/jenkins, but better suites https://github.com/odavid/my-bloody-jenkins
+icon: https://wiki.jenkins-ci.org/download/attachments/2916393/logo.png
+maintainers:
+- email: ohad.david@gmail.com
+  name: odavid
+name: my-bloody-jenkins
+sources:
+- https://github.com/odavid/my-bloody-jenkins
+- https://github.com/odavid/my-bloody-jenkins-helm-chart
+- https://github.com/odavid/jenkins-jnlp-slave
+version: 0.1.65

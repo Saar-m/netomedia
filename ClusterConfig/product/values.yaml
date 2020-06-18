@@ -1,0 +1,78 @@
+# Default values for  netomedia (production cluster, namespace).
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+labels:
+  app: netomedia-prod
+  envi: production
+selectorLabels:
+  app: netomedia-prod
+  envi: production
+replicaCount: 2
+
+image:
+  repository: gcr.io/homework-268814/nm
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+podSecurityContext: {}
+  # fsGroup: 2000
+# secretRef: 
+# configMapRef: 
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 80
+
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.name: nginx
+    kubernetes.io/tls-acme: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    acme.cert-manager.io/http01-edit-in-place: "true"
+  hosts:
+    - host: nm.saar.io
+      paths: 
+        path: /     
+  tls:
+   - secretName: netomedia-prod-tls
+     hosts:
+       - nm.saar.io
+
+resources: 
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  limits:
+    cpu: 20m
+    memory: 256Mi
+  requests:
+    cpu: 10m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

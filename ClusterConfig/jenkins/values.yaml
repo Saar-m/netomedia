@@ -1,0 +1,332 @@
+---
+########################################################
+## Override image
+image:
+  repository: odavid/my-bloody-jenkins
+  tag: 2.190.3-166
+  pullPolicy: IfNotPresent
+  imagePullSecrets:
+########################################################
+
+########################################################
+## Exposing service
+service:
+  type: NodePort
+  annotations: 
+  httpPort: 8080
+  jnlpPort: 50000
+  sshdPort: 16022
+  # loadBalancerSourceRanges: 0.0.0.0/0
+  # loadBalancerIP:
+########################################################
+
+########################################################
+## Exposing ingress
+##
+## Set the jenkinsURL configuration.
+## If not set and ingress is enabled, then jenkins URL is
+## {{ .Values.ingress.httpProtocol }}://{{ .Values.ingress.hostname }}{{ .Values.ingress.path }}
+# jenkinsURL: https://jenkins.host.name
+ingress:
+  ## Change to https if the ingress uses tls or you are using external
+  ## tls termination using annotations
+  httpProtocol: https
+  enabled: true
+  path: /
+  hostname: jenkins.saar.io
+  annotations:
+    ingress.kubernetes.io/ingress.name: "nginx"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    acme.cert-manager.io/http01-edit-in-place: "true"
+  tls:
+    secretName: jenkins-tls-cert
+
+  ## Ability to add more ingress rules
+  additionalRules:
+  # - http:
+  #     paths:
+  #     - path: path
+  #       backend:
+  preAdditionalRules:
+########################################################
+
+########################################################
+## By default rbac are not used and default service account
+## is being used.
+rbac:
+  ## Create serviceAccount, Role and RoleBindings
+  create: true
+  ## Instead of Role, create a ClusterRole and ClusterRoleBindings
+  clusterWideAccess: false
+########################################################
+
+########################################################
+## Control requests limit
+## It is highly recommended to give jenkins the amount of
+## cpu and memory in production usage
+resources:
+# requests:
+#   cpu: 200m
+#   memory: 256Mi
+# limits:
+#   cpu: 200m
+#   memory: 256Mi
+########################################################
+
+########################################################
+## It can take a lot of time for jenkins to be started
+## This is why the livenessProbe.initialDelaySeconds is high
+readinessProbe:
+  timeoutSeconds: 5
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 3
+
+livenessProbe:
+  timeoutSeconds: 5
+  initialDelaySeconds: 600
+  periodSeconds: 5
+  failureThreshold: 3
+########################################################
+
+########################################################
+## Control peristence of jenkins data:
+## By default, the master workspace and master home are separated
+## Since master should be used as executer, the workspace directory is
+## mainly used for fetching pipeline libraries and some initial clone of
+## projects. Therefore, the jenkinsWorkspace can be left as emptyDir (enabled=false).
+## On the other hand, jenkinsHome must be persistent!
+persistence:
+  mountDockerSocket: true
+  jenkinsHome:
+    enabled: true
+    annotations: {}
+    accessMode: ReadWriteOnce
+    size: 20Gi
+    ## A manually managed Persistent Volume and Claim
+    ## Requires persistence.jenkinsHome.enabled: true
+    ## If defined, PVC must be created manually before volume will be bound
+    existingClaim:
+    ## If defined, storageClass: <storageClass>
+    ## If set to "-", storageClass: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClass spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "-"
+  jenkinsWorkspace:
+    enabled: false
+    annotations: {}
+    accessMode: ReadWriteOnce
+    size: 8Gi
+    ## A manually managed Persistent Volume and Claim
+    ## Requires persistence.jenkinsWorkspace.enabled: true
+    ## If defined, PVC must be created manually before volume will be bound
+    existingClaim:
+    ## If defined, storageClass: <storageClass>
+    ## If set to "-", storageClass: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClass spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "-"
+
+  ## Additional volumes and mounts that will be attached to the container. e.g. secrets
+  volumes:
+    # - name: gitsshkey
+    #   secret:
+    #     secretName: gitsshkey
+  #  - name: nothing
+  #    emptyDir: {}
+  mounts:
+    # - mountPath: /etc/keys/
+    #   name: gitsshkey
+    #   readOnly: true
+  #  - mountPath: /var/nothing
+  #    name: nothing
+  #    readOnly: true
+########################################################
+
+########################################################
+## See: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+nodeSelector: {}
+tolerations: []
+affinity: {}
+########################################################
+
+########################################################
+## Add more annotations to pod
+podAnnotations: {}
+########################################################
+
+########################################################
+## If true, will set the jenkins master to use hostNetwork=true
+useHostNetwork: false
+########################################################
+
+########################################################
+## Additional Environment variables to be provided to the container
+env:
+#   ENVIRONMENT_VARIABLE_NAME: VALUE
+########################################################
+
+########################################################
+## If specified, an internal secret will be created.
+## Each key will become JENKINS_SECRET_<KEY> environment variable
+secrets:
+# MY_PASSWORD: Very Secret
+########################################################
+
+########################################################
+## Use external secrets as environment variables
+## Each item in the list represents an existing secret name
+## All its keys will be transformed to environment variables
+## See https://github.com/odavid/my-bloody-jenkins/pull/102
+# envSecrets:
+#   - gitsshkey
+  #   - my-jenkins-external-secret
+########################################################
+
+########################################################
+## List of ConfigMaps that will be mounted as configuration files
+## All configuration files will be deep merged into single config
+## See https://github.com/odavid/my-bloody-jenkins/pull/102
+configMaps:
+#  - my-config-map
+########################################################
+
+
+########################################################
+## The jenkins Admin Username - must be a valid username
+## within the Jenkins Security Realm
+jenkinsAdminUser: admin
+########################################################
+
+########################################################
+## Java Options for Jenkins Master. Make sure
+## resource limits and requests are defined accordingly
+javaMemoryOpts: '-Xmx256m'
+########################################################
+
+########################################################
+## If enabled = 'true', then
+## a Default k8s Jenkins cloud will be configured to
+## provision slaves automatically based on labels
+defaultK8sCloud:
+  enabled: false
+  name: "k8s"
+  labels:
+    - "generic"
+  jvmArgs: "-Xmx1g"
+  remoteFs: "/home/jenkins"
+  image: "odavid/jenkins-jnlp-slave:latest"
+########################################################
+
+########################################################
+## A managed configuration based on
+## My Bloody Jenkins YAML config.
+## See: https://github.com/odavid/my-bloody-jenkins#configuration-reference
+managedConfig:
+## Configure Security - https://github.com/odavid/my-bloody-jenkins#security-section
+# security:
+## Configure tools - https://github.com/odavid/my-bloody-jenkins#tools-section
+# tools:
+## Configure credentials - https://github.com/odavid/my-bloody-jenkins#credentials-section
+  credentials:
+    gitsshkey:
+      type: sshkey
+      description: github-ssh-key
+      username: saar-m 
+      base64: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlKS0FJQkFBS0NBZ0VBNkRQK0NyVHk1YmJGQVVBOXFDcTRRci9IWGFHK2dwR1pNRVZJcHY0eGwwblBEalBaCjVEMm5mUEhoTEtMcFh2VTZhTEY1UVBNWHdWYnhlb2lGVGlsaTg2d01FblNEMEd6Y2cwcE9qNGFPbERjS0lUNUoKczF4bVVKK1kwVWwyQ2JDODJ2aFdEaGFWaDgrUXE5eHZiWUdETkkvOS9TbHB6c0hvQ0V0SmNMNTA3blE4VkhhSgovNzlYSzVpSUJ6Vll0MEdZTjQwNDN4SWFYRVJja0FRL2Y1bTdqR3N4Um9EcWlISGFBd0pzejk2cHc1blVCcjdFCkZEc0tMVW95ZDRGQ0JuVHR3Zk5QWFhPbU12K3JSVmpiRkpzVTJGcEpuZGp4TVNLa1JzaHRmc2dpT01HREc4c3cKUDlPYVVBWG1NMUlldlh6WjRCdk5CM3ZpWVR0ZVZWUkowRmtLMkdXV09qc2hIM0FRMzcwWFNxNVc4T2JBeFNSbwpNV2tkNUhROEZvQ3JwNHV3Z2RsemhGME5CeFE4cnhvOW9LSmE0anB6MDhBZXhOZHh5ZmNLZmVzcTQwMGVOSlNDClN0eTVTaUUwWU9Na1FlR1M3S0xhT0lFaE5wL1lrT3pJYm1lWGFmWiswYXhSRlU3S3RMeTlDNjJsdWJxQTdRSlIKWWJlaFhXVmFHSGhPb3o0M2lYVHBHdXkvV0dheGZMaDR1MW5kY3hmVTdYT1pGWDlxdXl6NWJMdi9kZUtJZW95dwpwQmREbVg4bE5xVHNxRkYwbTcwUzdmMnlGSGhyNzRyS1VocEJEUWZCU25wbkU4RTRwZ2VYN0dNZ0FMLzRXL2hQCmFvblRmSVBzY3J1MUJJYkpnem9hYkxqZVdjUmJ0WmhsVkZ4ODdnZWJ4WTNVcWdpUVcxOGhNQUtwby8wQ0F3RUEKQVFLQ0FnQjlmK1JWS3htQStIaWZ4WFhObDFGQm1sK0pocXJ0N1AyTHJsYW5Fd29BaDc3bUlUWXArdnkwTmhNSwp5ZjR4K1g2WktScXM5UFlvNC9IZDFUMmZVaFVPT0RYS0g3bENoQ1BtdmRtYUR4S3VudFRWeE5HV3BHRVVRRDRiCkY0WTVsSkZ1RS95RzNzUHd4RW1mNmFNNzMxem5vcytXN2JRbk1IeFZSME9wTVBjSURrQ3hNZVJDR3N0bFg2cGQKb3dLUkFWM2c0RzRWZXJaT21oQWhNbnFUWDZhVExUaFRyOGVTK1Yzb2RINFZGM1pQcHF1Ry9jSUNZU3FOOGVVMgoyK0N3bHJBT1BJL3ZwVnIxZzJPeE5tWXFTK3RIUi8wejJCWDhCWW9lUzZPS2UyYXJvRU5aV1VkNXA4ZG1hdG5SCmNSZjJPQzJWeDlEWHM2aFYvdjFzUndNaUhZNFRBWFJSTlNOMmtHc3N1SXI2NXNUV1lWWHIvdXd6WDU5b2tPTTYKUEpQMHFwS25Ga251a2pQTWRwNjc5K3ZudkxEM2p6VGxwK29iN05zUWtuN2RtdUlpS25JbUVWRkZyRDJ5VW5pWApCOXNSNlZkSExkanZHak80TXRSOWc4U09aQWtXM0NWbkRDNUNVWDRNNXQreEpGTHlWL3V1dTFzemJ0TkdUSEVrCjN0MWhPaWkrOW9MdTVqbzd2TE1XbkVNelZUTktsSlpGN0tXMVJjdkErWDFJSEJPeXhPNUt5R1ZPQnl2VElRWjUKTzM2UEN1WFJoeEIzcUR2NDJkOGpCcHY3WTNXQUJaRW13eUgxM2pwTkxHSXpKTnc3VU5rdllJRHR6aUFPeWxYRAp2dmZZQ2JkRW5peksybElHd0w3cDRBS25GK2wyTGIraWNhL2llUTVqWEt3S0pwS3U3UUtDQVFFQS81NnVadXAyCnFKdWt3VjdIekg1K0drRGI1dS9aQTRoZHBsRitCSmk5NzlEdnZJQVJDWFRqaU9CdnZOeGxBUi9PYWZpY3ZMQUUKeG1mWXhOa3h6NzExQi9QZkFSLzlnUnBTeGg1dVhiZ1Zid1ltY1gzeXJsQWh0c3Q1bm5ER1FJVlZoeldxNExndApmZmpuMHptdFZ3TnJ4aUZDaXpjOHQ0cGJJeFZTQlhwS3dEUmQ3NkdTemxxSlJsV1BpWXJTR2d3RDJtSUJVLzNSCk1MdnBUaDQ4c3FyMGFHZ1VpVSt3Z3VvZ0FJbk45OTIzd2RjMUtvZ0dFZGpiTVY5ME5YNEh5a3FPVGxQOUhOdTQKcGMrL3dlWGx3S0poMVhDM25reUwzQnN0d1R4SE1DdjNKcytkS0RIM01lT2lqV3didDhoTFVBZjBZWlpoVnB4bAo0QjdnN0FFRDlZVDRTd0tDQVFFQTZJeGxYSmlUM1RGRlJ1NUQzSXk3enVzcmVRSHgxNHZwcjlTV1krQVVyL0xYCllXVFRzOG1rTWdkakRsQkNJeWkwSXpBVWtiZ2I2WGdiQi9sMVF2RDMybUxld1RQMENBYlpIWWZ3MDZhU2dsY2QKVlFNYitlVno0Mk1ieFVvbDFQeHkrVmM0eDZ1dHQ0RzJHSkR2STJZUFNXYytBUTBTWUJJN0M5UThZSTZTZVM5SQo3VVpIUmhYZlNZalpkdTM0ekxYM0IwUTYzNDJia3ZBVHhJdjZrTitMOGVldUtLdlV2S2hTcERNTFNNOHRGalgzCmkvVmhuRC9KVlkrMW8xaWJEM1BNb25xWFJ3aDlnQ3dab2RBQ0pXZDdiQXBWSW9aTjROTldxKzYxTVIvSkxHK0wKQ2N2R0JsR2xUbzZ0aFpwUkxrYmtsLzUreEVReWk1eGE3RzhSTHM4MzF3S0NBUUVBa3MySkQ2WDcrNTFYbzQ1UgpaTW9JbGY5RnkzMVh2c1drTXc1K054bVppNDhNLzg3MCtkOWRoWkNQMjRFZnFPT2hZZzdieFNtNXRGQ1RsNG05Cko3ZUE3TTVMOXBOdXZhUm1nVTJjeU1vZDFTTk5GTVRtaU9HUVd6REVhaEFPYTZPbm1QMWpZNmVpeU1RWUw2RGkKUWlTKzBvenJjSlNLbEVZclRSekRmRTNkZkVFVzZiWjdYM056ZnlkSVJnK3AxamVzUnRFZVBpUjQ3V29kOVRVOApXc2Yva2E2a2pLOXRpZUgzK3hjcGFQNjJ0K1ptckVSdVovV0kvUFA3QTNXYjk3dVZ1cnBWbFN0REFrY3JzNm5hCnB5VWExci9qVkZCVnlsVDVsQTZRTzhRa0x1L3hLOUoyU3ZxV3NtMnlCWHhNZEd2OUY4YUxwSGd4c2VOSi9ZQWYKeS9OUHZRS0NBUUFWQ040Q1NpclZ6eWNkQzJCSUN0TFNIS09LQm9zQm5ENC9FVk9wSlJPNTlwVlUwZkgwU1VENAo1WUlvUVVvNk0reFhZbm41MUZWeUFOTXhIWGRsM3JZTW92VFROUWZWMGdqQml4SlZrck9kNXBOWXBUZGFtMDZvCk9zYkFTYnl5VDBOM0dsU2dldjd6b2wvK1NOM1lyZHFrSVJxU3JjUUR2S0pxcDMvdW0vYlR6MXNoVzBJSExPTk4KbTN0UUxxWmFuZnNDUlVHdUJ2a1RpWFBBUzRrV29hSGU5NzNoSCtuV1JzTnk1c3NXZ3VicEkyaUkyR0ZENk9FbApSQ0tCNi9uYW8vYldtNUFqZExrbFp0ZktzeTMraENXOTJCRnJWZ3FsVTNoN2hOUU81WGtrODlIM3lON1lvM240CmFSOTQva1Jwa3pBS0w1TDMzZE5VbllmNzZ1LzY4L054QW9JQkFDb2szdzhNQnZHNzlyVmVGVVdjNW8xdnNES3UKWk9yRG9lanYrOStMWjFmcnJMemF6czYvYjFWZGtUVWRTb0ZPaXg2UFQ3c2c2Ui9SQnNrcUVFeXpIVzgrYmdHSwpCK1ZpSGxFbWp1OHZSblV1by96ckxLQm05RVhmTGUrbmFmdHNsdVpmNjRFTmJQYzFmdmk3NHRDYnNJOUFybG1ECklvTzRYUzlseVMrYlZxVElnSGVNKzJ4TUlBalVDN1BRMmlaRzdxVDA0S25WMUs1NGVNNjdyR3kyYUZydGpjTFYKajJRUm1BVmdNbklldHp6MEkrWnNibGg4ek1MR0RTR3d4UmllcysxS0JoWHBjQmJ6WWZDMHpNdzZwbWFiYWxZagpMaFgyamtlcHhGTXZNRmljRlhhekZnZGNCMVlmb2VqMXdDZ0ttRkZQeThxbDBOR082UVRINnY3aVpXST0KLS0tLS1FTkQgUlNBIFBSSVZBVEUgS0VZLS0tLS0K
+
+
+  ## Configure notifiers - https://github.com/odavid/my-bloody-jenkins#notifiers-section
+  # notifiers:
+  ## Configure notifiers - https://github.com/odavid/my-bloody-jenkins#pipeline-libraries-section
+  pipeline_libraries:
+    dev-pipelines: # the library name
+      source:
+        remote: git@github.com:Saar-m/netomedia.git
+        credentialsId: gitsshkey # should be defined in credentials section
+      defaultVersion: master
+      implicit: false # Default false - if true the library will be available within all pipeline jobs with declaring it with @Library
+      allowVersionOverride: true # Default true, better to leave it as is
+      includeInChangesets: true # see h## Script Approvals - https://github.com/odavid/my-bloody-jenkins#script-approval-section
+  # script_approval:
+  ## Configure Clouds - https://github.com/odavid/my-bloody-jenkins#clouds-section
+  clouds:
+    # Top level key -> name of the cloud
+    homework-cluster:
+    #   ## default is false
+      directConnection: false
+    #   # type is mandatory
+      type: kubernetes
+    #   # Kubernetes URL
+      serverUrl: https://35.226.103.150
+    #   # Default kubernetes namespace for slaves
+      namespace: jenkins
+    #   # Pod templates
+      templates:
+        - name: kubeslave
+          # Only JNLP slaves are supported
+          image: jenkins/jnlp-slave:latest
+          # Labels are mandatory!
+          # Your pipeline jobs will need to use node(label){} in order to use this slave template
+          labels:
+            - kubeslave
+            - generic
+          # The directory within the container that is used as root filesystem
+          remoteFs: /home/jenkins
+          # JVM arguments to pass to the jnlp jar
+          jvmArgs: -Xmx1g
+          # Volume mappings
+          # If your slave need to build docker images, then map the host docker socket
+          # to the container docker socket. Also make sure the user within the container
+          # has privileges to that socket within the entrypoint
+          volumes:
+            - '/var/run/docker.sock:/var/run/docker.sock'
+          # EXCLUSIVE (Default) - Only build jobs with label expressions matching this node
+          # NORMAL = Use this node as much as possible
+          nodeUsageMode: NORMAL
+          # Environment variables to pass to the slave container
+          # environment:
+          
+    #       # # Dictionary of annotations that will be added to the pod metadata
+    #       # annotations:
+    #       #   annotation1: value1
+    #       # # Ability to define a yaml string that will be merged with the pod manifest
+    #       # yaml: |-
+    #       #   spec: xxx
+    #       #   metadata: yyy
+## Configure Seed Jobs - https://github.com/odavid/my-bloody-jenkins#seed-jobs-section
+  seed_jobs:
+  #   # Each top level key is the seed job name
+    unit-test:
+      source:
+        # git repo where of the seed job
+        remote: git@github.com:Saar-m/netomedia.git
+        credentialsId: gitsshkey
+        branch: 'master'
+      # Location of the pipeline script within the repository
+      pipeline: Pipelines/unit-test.groovy
+      # always - will be executed everytime the config loader will run
+      # firstTimeOnly - will be executed only if the job was not exist
+      # never - don't execute the job, let the triggers do their job
+      executeWhen: never #firstTimeOnly always never
+    deploy:
+      source:
+        remote: git@github.com:Saar-m/netomedia.git
+        credentialsId: gitsshkey
+        branch: 'master'
+      pipeline: Pipelines/deploy.groovy
+      executeWhen: never
+    
+## Configure Job DSL Scripts - https://github.com/odavid/my-bloody-jenkins#jobdsl-scripts-section
+# job_dsl_scripts:
+########################################################
+  configuration_as_code:
+    unclassified:
+      simple-theme-plugin:
+        elements:
+        - cssUrl:
+            url: "https://cdn.rawgit.com/afonsof/jenkins-material-theme/gh-pages/dist/material-teal.css"
