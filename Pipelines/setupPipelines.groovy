@@ -1,5 +1,5 @@
 node {
-  label 'generic'
+  agent any
   git(branch: 'master',
       credentialsId: 'gitsshkey',
       url: 'git@github.com:Saar-m/netomedia.git')
